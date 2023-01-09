@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from torch import Tensor
 
@@ -50,7 +49,7 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-    expansion = 4
+    expansion = 2
 
     def __init__(self, in_planes, out_planes, stride=1, downsample=None):
         super().__init__()
@@ -156,8 +155,20 @@ class ResNet(nn.Module):
         return x
     
 
-
 def resnet50_feat(num_classes, img_channel):
-    model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes, img_channel=img_channel)
+    # model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes, img_channel=img_channel)
+    model = ResNet(BasicBlock, [3, 4, 6, 3], num_classes, img_channel=img_channel)
     model = nn.Sequential(*list(model.children())[:-2])
     return model
+
+
+if __name__ == "__main__":
+    import torch
+    from thop import profile
+
+    # Evaluate the model's flops
+    net = ResNet(Bottleneck, [3, 4, 6, 3], 3, img_channel=1, in_planes=32)
+    input_tensor = torch.randn(1, 1, 1024, 1024)
+
+    flops, params = profile(net, inputs=(input_tensor,))
+    print(f"Flops: {flops / 1e9:.3f}G, Params: {params / 1e6:.3f}M")

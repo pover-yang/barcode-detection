@@ -35,7 +35,7 @@ def label_process(dir_name):
     f = open(dst_txt_file, 'w')
 
     # 读取所有的标签文件
-    for label_path in list(dir_name.rglob(r"**\*.json")):
+    for label_path in list(dir_name.rglob(r"**/*.json")):
         relative_path = label_path.with_suffix('.png').relative_to(dir_name)
         label_line = [str(relative_path)]
 
@@ -102,8 +102,8 @@ def split_train_test_txt(txt_file, train_ratio=0.8):
 
 
 def main():
-    # label_process(Path(r'D:\[Backup]Barcode-Detection-Data'))
-    split_train_test_txt(Path(r'D:\all.txt'))
+    label_process(Path('/Users/yjunj/Data/Barcode-Detection-Data/data/'))
+    split_train_test_txt(Path('/Users/yjunj/Data/Barcode-Detection-Data/all.txt'))
 
 
 if __name__ == "__main__":
