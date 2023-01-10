@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
 from collections import defaultdict
+from PIL import Image
+import numpy as np
+import tqdm
 
 valid_pids_set = [[0, 0, 0, 0],  # 1d
                   [8, 9, 10, 11],  # 1d
@@ -15,6 +18,7 @@ valid_pids_map = {
     (1, 1, 2, 3, 7, 7, 7): 1,  # qr
     (4, 4, 5, 6): 2  # dm
 }
+
 
 # 将四个点坐标转换为bbox坐标
 def coords_to_bbox(coords):
@@ -101,9 +105,38 @@ def split_train_test_txt(txt_file, train_ratio=0.8):
         f.writelines(test_lines)
 
 
+# 统计灰度图像数据集的均值方差
+def cal_mean_std(dir_name):
+
+    mean = np.zeros(1)
+    std = np.zeros(1)
+    all_img_paths = list(dir_name.rglob(r"**/*.png"))
+    for img_path in tqdm.tqdm(all_img_paths, ncols=80):
+        pil_img = Image.open(img_path).convert("L")
+        img = np.array(pil_img, dtype=np.float64)
+        img /= 255.0
+        mean += img.mean()
+    mean /= len(all_img_paths)
+
+    for img_path in tqdm.tqdm(all_img_paths, ncols=80):
+        pil_img = Image.open(img_path).convert("L")
+        img = np.array(pil_img, dtype=np.float64)
+        img /= 255.0
+        diff = (img - mean).mean()
+        std += diff * diff
+    std /= len(all_img_paths)
+    std = np.sqrt(std)
+
+    print(f"mean: {mean}, std: {std}")
+    with open(dir_name.parent / 'mean_std.txt', 'w', encoding='utf-8') as f:
+        f.writelines(f"mean: {mean}, std: {std}")
+
+
 def main():
-    label_process(Path('/home/junjieyang/Data/Barcode-Detection-Data/data/'))
-    split_train_test_txt(Path('/home/junjieyang/Data/Barcode-Detection-Data/all.txt'))
+    label_process(Path(r'D:\Barcode-Detection-Data\data'))
+    split_train_test_txt(Path(r'D:\Barcode-Detection-Data\data\all.txt'))
+    # label_process(Path('/home/junjieyang/Data/Barcode-Detection-Data/data/'))
+    # split_train_test_txt(Path('/home/junjieyang/Data/Barcode-Detection-Data/all.txt'))
 
 
 if __name__ == "__main__":

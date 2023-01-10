@@ -1,16 +1,21 @@
+import math
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 
-from models.resnet import resnet50_feat
+from models.resnet import resnet50_feat, resnet18_feat
 from utils.centernet_loss import focal_loss, reg_l1_loss
 
 
 class CenterNet(pl.LightningModule):
-    def __init__(self, num_classes=3, img_channel=1):
+    def __init__(self, num_classes=3, img_channel=1, backbone='resnet18'):
         super(CenterNet, self).__init__()
 
-        self.backbone = resnet50_feat(num_classes, img_channel)  # 1024, 1024, 1 -> 32, 32, 512
+        if backbone == 'resnet18':
+            self.backbone = resnet18_feat(num_classes, img_channel)  # 1, 1024, 1024 -> 512, 32, 32
+        elif backbone == 'resnet50':
+            self.backbone = resnet50_feat(num_classes, img_channel)  # 1, 1024, 1024 -> 512, 32, 32
+
         self.decoder = Decoder(in_planes=512)  # 32, 32, 512 -> 256, 256, 8
         self.head = Head(num_classes, in_planes=8)  # 256, 256, 8 -> 256, 256, [num_classes|2|2]
 
@@ -44,43 +49,43 @@ class CenterNet(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         images, targets = batch
-        hmap, wh, offset = self(images)
+        hmap, wh, offset = self.forward(images)
         loss_dict = self.loss(hmap, wh, offset, targets)
-        loss = sum(loss_dict.values())
+        loss = loss_dict['hmap_loss'] + 0.1 * loss_dict['wh_loss'] + loss_dict['off_loss']
         return loss
 
     def validation_step(self, batch, batch_idx):
         images, targets = batch
-        hmap, wh, offset = self(images)
+        hmap, wh, offset = self.forward(images)
         loss_dict = self.loss(hmap, wh, offset, targets)
-        loss = sum(loss_dict.values())
+        loss = loss_dict['hmap_loss'] + 0.1 * loss_dict['wh_loss'] + loss_dict['off_loss']
         return loss
 
     def test_step(self, batch, batch_idx):
         images, targets = batch
-        hmap, wh, offset = self(images)
+        hmap, wh, offset = self.forward(images)
         loss_dict = self.loss(hmap, wh, offset, targets)
-        loss = sum(loss_dict.values())
+        loss = loss_dict['hmap_loss'] + 0.1 * loss_dict['wh_loss'] + loss_dict['off_loss']
         return loss
 
     def configure_optimizers(self):
-        import math
-        def warmup_lr(max_epochs, warmup_epochs=None, warmup_factor=0.1):
-            if not warmup_epochs:
-                warmup_epochs = max_epochs // 20
-
-            def lr_lambda(epoch):
-                if epoch < warmup_epochs:
-                    return warmup_factor + (1 - warmup_factor) * epoch / warmup_epochs
-                else:
-                    return 1 / 2 * (1 + math.cos((epoch - warmup_epochs) / (max_epochs - warmup_epochs) * math.pi))
-
-            return lr_lambda
-
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
         lr_lambda = warmup_lr(max_epochs=self.trainer.max_epochs)
         lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+
+
+def warmup_lr(max_epochs, warmup_epochs=None, warmup_factor=0.1):
+    if not warmup_epochs:
+        warmup_epochs = max_epochs // 20
+
+    def lr_lambda(epoch):
+        if epoch < warmup_epochs:
+            return warmup_factor + (1 - warmup_factor) * epoch / warmup_epochs
+        else:
+            return 1 / 2 * (1 + math.cos((epoch - warmup_epochs) / (max_epochs - warmup_epochs) * math.pi))
+
+    return lr_lambda
 
 
 class Decoder(nn.Module):
@@ -153,12 +158,9 @@ class Head(nn.Module):
         return hmap, wh, offset
 
 
-def main():
+def cal_flops():
     import torch
-    import time
     from thop import profile
-    from torch.utils.data import DataLoader
-    from dataset.dataset import BarcodeCenterNetDataset, collate_fn
 
     # Evaluate the model's flops
     model = CenterNet()
@@ -166,10 +168,17 @@ def main():
     flops, params = profile(model, inputs=(input_tensor,))
     print(f"Flops: {flops / 1e9:.3f}G, Params: {params / 1e6:.3f}M")
 
+
+def model_infer():
+    import time
+    from torch.utils.data import DataLoader
+    from dataset.dataset_centernet import CenterNetDataset, collate_fn
+
     # Evaluate the time of model forward
-    dataset = BarcodeCenterNetDataset('/Users/yjunj/Data/Barcode-Detection-Data/data',
-                                      '/Users/yjunj/Data/Barcode-Detection-Data/test.txt')
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4, collate_fn=collate_fn)
+    model = CenterNet().load_from_checkpoint('../ckpt/epoch=199-step=75000.ckpt')
+
+    dataset = CenterNetDataset(r'D:\Barcode-Detection-Data', mode='test')
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4, collate_fn=collate_fn)
     for i, (images, targets) in enumerate(dataloader):
         start = time.time()
         hmap, wh, offset = model(images)
@@ -180,4 +189,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cal_flops()
+    # model_infer()

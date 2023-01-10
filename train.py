@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 
 from configs import conf as configs
-from dataset.dataset import get_data_loader
+from dataset.dataset_centernet import get_data_loader
 
 from models.centernet import CenterNet
 
