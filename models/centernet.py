@@ -77,7 +77,7 @@ class CenterNet(pl.LightningModule):
 
             return lr_lambda
 
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-6)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
         lr_lambda = warmup_lr(max_epochs=self.trainer.max_epochs)
         lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}

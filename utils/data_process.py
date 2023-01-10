@@ -94,7 +94,7 @@ def split_train_test_txt(txt_file, train_ratio=0.8):
     train_lines = lines[:int(len(lines) * train_ratio)]
     test_lines = lines[int(len(lines) * train_ratio):]
 
-    with open(txt_file.parent / 'train.txt', 'w') as f:
+    with open(txt_file.parent / 'train.txt', 'w', encoding='utf-8') as f:
         f.writelines(train_lines)
 
     with open(txt_file.parent / 'test.txt', 'w') as f:
@@ -102,8 +102,8 @@ def split_train_test_txt(txt_file, train_ratio=0.8):
 
 
 def main():
-    label_process(Path('/Users/yjunj/Data/Barcode-Detection-Data/data/'))
-    split_train_test_txt(Path('/Users/yjunj/Data/Barcode-Detection-Data/all.txt'))
+    label_process(Path('/home/junjieyang/Data/Barcode-Detection-Data/data/'))
+    split_train_test_txt(Path('/home/junjieyang/Data/Barcode-Detection-Data/all.txt'))
 
 
 if __name__ == "__main__":
