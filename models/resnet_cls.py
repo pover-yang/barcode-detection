@@ -41,7 +41,13 @@ class ResNet18(pl.LightningModule):
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
 
 
-if __name__ == '__main__':
+def ckpt_to_pth(ckpt_path):
+    pl_model = ResNet18(num_classes=10, img_channels=1)
+    model = pl_model.model
+    torch.save(pl_model.model.state_dict(), ckpt_path.replace('.ckpt', '.pth'))
+
+
+def train():
     model = ResNet18(num_classes=10, img_channels=1)
 
     transform_train = transforms.Compose([
@@ -82,3 +88,8 @@ if __name__ == '__main__':
     trainer.fit(model, train_loader, test_loader)
 
     print('done')
+
+
+if __name__ == '__main__':
+   # train()
+    ckpt_to_pth('../ckpt/resnet18-epoch=42-val_loss=0.54.ckpt')

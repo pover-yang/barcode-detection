@@ -165,19 +165,28 @@ def resnet50_feat(num_classes, img_channels):
     return model
 
 
-def resnet18_feat(num_classes, img_channels):
+def resnet18_feat(num_classes, img_channels, pretrained=False):
     # 1, 1024, 1024 -> 512, 32, 32
     # Flops: 36.463G, Params: 11.170M
     model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes, img_channels=img_channels)
+    if pretrained:
+        model.load_state_dict(
+            torch.load("ckpt/resnet18-epoch=42-val_loss=0.54.pth"),
+            strict=True)
     model = nn.Sequential(*list(model.children())[:-2])
     return model
 
 
-def resnet18(num_classes, img_channels):
+def resnet18(num_classes, img_channels, pretrained=False):
     # 1, 1024, 1024 -> 512, 32, 32
     # Flops: 36.463G, Params: 11.170M
     model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes, img_channels=img_channels)
+    if pretrained:
+        model.load_state_dict(
+            torch.load("/home/junjieyang/PyProjs/barcode-detection/ckpt/resnet18-epoch=42-val_loss=0.54.pth"),
+            strict=True)
     return model
+
 
 if __name__ == "__main__":
     import torch

@@ -5,22 +5,22 @@ import pytorch_lightning as pl
 
 from models.resnet import resnet50_feat, resnet18_feat
 from utils.centernet_loss import focal_loss, reg_l1_loss
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, BackboneFinetuning
 
 
 class CenterNet(pl.LightningModule):
-    def __init__(self, num_classes=3, img_channel=1, backbone='resnet18'):
+    def __init__(self, num_classes=3, img_channels=1, backbone='resnet18'):
         super(CenterNet, self).__init__()
 
         if backbone == 'resnet18':
-            self.backbone = resnet18_feat(num_classes, img_channel)  # 1, 1024, 1024 -> 512, 32, 32
+            self.backbone = resnet18_feat(num_classes=10, img_channels=1, pretrained=True)  # 1, 1024, 1024 -> 512, 32, 32
         elif backbone == 'resnet50':
-            self.backbone = resnet50_feat(num_classes, img_channel)  # 1, 1024, 1024 -> 512, 32, 32
+            self.backbone = resnet50_feat(num_classes, img_channels)  # 1, 1024, 1024 -> 512, 32, 32
 
         self.decoder = Decoder(in_planes=512)  # 32, 32, 512 -> 256, 256, 8
         self.head = Head(num_classes, in_planes=8)  # 256, 256, 8 -> 256, 256, [num_classes|2|2]
 
         self.init_weights()
-
         self.focal_loss = focal_loss
         self.reg_l1_loss = reg_l1_loss
 
@@ -36,7 +36,6 @@ class CenterNet(pl.LightningModule):
         feats = self.backbone(images)
         feats = self.decoder(feats)
         hmaps, whs, offsets = self.head(feats)
-
         return hmaps, whs, offsets
 
     def loss(self, hmap, wh, offset, target):
@@ -52,6 +51,7 @@ class CenterNet(pl.LightningModule):
         hmap, wh, offset = self.forward(images)
         loss_dict = self.loss(hmap, wh, offset, targets)
         loss = loss_dict['hmap_loss'] + 0.1 * loss_dict['wh_loss'] + loss_dict['off_loss']
+        self.log('train_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -59,6 +59,7 @@ class CenterNet(pl.LightningModule):
         hmap, wh, offset = self.forward(images)
         loss_dict = self.loss(hmap, wh, offset, targets)
         loss = loss_dict['hmap_loss'] + 0.1 * loss_dict['wh_loss'] + loss_dict['off_loss']
+        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -69,10 +70,29 @@ class CenterNet(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
-        lr_lambda = warmup_lr(max_epochs=self.trainer.max_epochs)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        lr_lambda = warmup_lr(max_epochs=self.trainer.max_epochs, warmup_epochs=5)
         lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
+
+    def configure_callbacks(self):
+        lr_monitor = LearningRateMonitor(logging_interval='step')
+
+        backbone_finetune = BackboneFinetuning(
+            unfreeze_backbone_at_epoch=100,
+            train_bn=True,
+            verbose=True
+        )
+
+        model_checkpoint = ModelCheckpoint(
+            monitor='val_loss',
+            dirpath='/home/junjieyang/ExpLogs/CenterNet',
+            filename='centernet-resnet18-{epoch:02d}-{val_loss:.2f}',
+            save_top_k=200,
+            mode='min',
+        )
+
+        return [lr_monitor, backbone_finetune, model_checkpoint]
 
 
 def warmup_lr(max_epochs, warmup_epochs=None, warmup_factor=0.1):
