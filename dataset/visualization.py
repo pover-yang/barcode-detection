@@ -5,8 +5,8 @@ import torch
 import torchvision.ops
 from torch.utils.data import DataLoader
 
-from dataset_centernet import CenterNetDataset, collate_fn
-from dataset_torchvision import TorchvisionDataset
+from centernet_ds import CenterNetDataset, collate_fn
+from torchvision_ds import TorchvisionDataset
 
 
 def draw_img_with_labels(image, target):
@@ -57,7 +57,8 @@ def vis_bbox():
 def vis_hmap(root_dir):
     dataset = CenterNetDataset(root_dir, mode='all', input_size=1024, num_classes=3, filter_labels=[0])
 
-    indices = np.random.randint(0, len(dataset), 20)
+    # indices = np.random.randint(0, len(dataset), 20)
+    indices = list(range(0, 20))
     fig, axes = plt.subplots(4, 5, figsize=(10, 8))
 
     vis_imgs = []

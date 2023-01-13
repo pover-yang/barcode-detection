@@ -1,15 +1,17 @@
 import pytorch_lightning as pl
-from resnet import resnet18
-from torchvision.datasets import CIFAR10
-from torch.utils.data import DataLoader
-import torch.nn.functional as F
 import torch
+import torch.nn.functional as F
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from torch.utils.data import DataLoader
 from torchvision import transforms
+from torchvision.datasets import CIFAR10
+
+from models.resnet import resnet18
 
 
-class ResNet18(pl.LightningModule):
+class LitResNet18(pl.LightningModule):
     def __init__(self, num_classes, img_channels=1):
-        super(ResNet18, self).__init__()
+        super(LitResNet18, self).__init__()
         self.model = resnet18(num_classes=num_classes, img_channels=img_channels)
 
     def forward(self, x):
@@ -40,15 +42,28 @@ class ResNet18(pl.LightningModule):
         lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.8)
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
 
+    def configure_callbacks(self):
+        lr_monitor = LearningRateMonitor(logging_interval='epoch')
+
+        model_ckpt = ModelCheckpoint(
+            monitor='val_loss',
+            dirpath='/home/junjieyang/ExpLogs/ResNet18',
+            filename='resnet18-{epoch:02d}-{val_loss:.2f}',
+            save_top_k=100,
+            mode='min',
+        )
+
+        return [lr_monitor, model_ckpt]
+
 
 def ckpt_to_pth(ckpt_path):
-    pl_model = ResNet18(num_classes=10, img_channels=1)
+    pl_model = LitResNet18(num_classes=10, img_channels=1)
     model = pl_model.model
     torch.save(pl_model.model.state_dict(), ckpt_path.replace('.ckpt', '.pth'))
 
 
 def train():
-    model = ResNet18(num_classes=10, img_channels=1)
+    model = LitResNet18(num_classes=10, img_channels=1)
 
     transform_train = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
@@ -70,20 +85,11 @@ def train():
     test_dataset = CIFAR10(root=r'/home/junjieyang/Data/CIFAR10', train=False, download=True, transform=transform_test)
     test_loader = DataLoader(test_dataset, batch_size=20, shuffle=False, num_workers=16, persistent_workers=True)
 
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor='val_loss',
-        dirpath='/home/junjieyang/ExpLogs/ImgCls',
-        filename='resnet18-{epoch:02d}-{val_loss:.2f}',
-        save_top_k=100,
-        mode='min',
-    )
-
     trainer = pl.Trainer(
         devices=[1, 2, 3, 4, 5, 6, 7],
         accelerator='gpu',
         max_epochs=500,
-        default_root_dir='/home/junjieyang/ExpLogs/ImgCls',
-        callbacks=[checkpoint_callback]
+        default_root_dir='/home/junjieyang/ExpLogs/ResNet18',
     )
     trainer.fit(model, train_loader, test_loader)
 
@@ -91,5 +97,5 @@ def train():
 
 
 if __name__ == '__main__':
-   # train()
-    ckpt_to_pth('../ckpt/resnet18-epoch=42-val_loss=0.54.ckpt')
+    # train()
+    ckpt_to_pth('../../ckpt/resnet18-epoch=42-val_loss=0.54.ckpt')

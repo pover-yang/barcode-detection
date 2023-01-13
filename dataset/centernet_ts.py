@@ -99,7 +99,7 @@ class CenterNetTransform(nn.Module):
         return image, target
 
 
-def gaussian_radius(height, width, min_overlap=0.1):
+def gaussian_radius(height, width, min_overlap=0.7):
     a1 = 1
     b1 = (height + width)
     c1 = width * height * (1 - min_overlap) / (1 + min_overlap)
@@ -118,7 +118,10 @@ def gaussian_radius(height, width, min_overlap=0.1):
     sq3 = np.sqrt(b3 ** 2 - 4 * a3 * c3)
     r3 = (b3 + sq3) / (2 * a3)
 
-    return min(r1, r2, r3)
+    radius = min(r1, r2, r3)
+    # radius = max(r1, r2, r3)
+    print(radius, height, width)
+    return radius
 
 
 def draw_gaussian(heatmap, center, radius, k=1):

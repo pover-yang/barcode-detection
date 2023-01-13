@@ -1,8 +1,13 @@
-import math
-from functools import partial
-
 import torch
 import torch.nn.functional as F
+
+
+def centernet_loss(hmap, wh, offset, target):
+    hmap_loss = focal_loss(hmap, target['hmap'])
+    wh_loss = reg_l1_loss(wh, target['wh'], target['reg_mask'])
+    offset_loss = reg_l1_loss(offset, target['offset'], target['reg_mask'])
+    loss_dict = {'hmap_loss': hmap_loss, 'wh_loss': wh_loss, 'off_loss': offset_loss}
+    return loss_dict
 
 
 def focal_loss(pred, target):
@@ -42,13 +47,6 @@ def focal_loss(pred, target):
 
 
 def reg_l1_loss(pred, target, mask):
-    # --------------------------------#
-    #   计算l1_loss
-    # --------------------------------#
-    # pred = pred.permute(0, 2, 3, 1)
-    # expand_mask = torch.unsqueeze(mask, -1).repeat(1, 1, 1, 1, 2)
-
-    # loss = F.l1_loss(pred * expand_mask, target * expand_mask, reduction='sum')
     loss = F.l1_loss(pred * mask, target * mask, reduction='sum')
     loss = loss / (mask.sum() + 1e-4)
     return loss

@@ -3,17 +3,6 @@ import torch.nn as nn
 from torch import Tensor
 
 
-def conv1x1(in_planes, out_planes, stride=1) -> nn.Conv2d:
-    """1x1 convolution"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
-
-
-def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1) -> nn.Conv2d:
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=dilation, groups=groups, bias=False, dilation=dilation)
-
-
 class BasicBlock(nn.Module):
     expansion = 1
 
@@ -156,50 +145,12 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet50_feat(num_classes, img_channels):
-    # 1, 1024, 1024 -> 2048, 32, 32
-    # Flops: 84.698G, Params: 23.502M
-    # model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes, img_channels=img_channels)
-    model = ResNet(BasicBlock, [3, 4, 6, 3], num_classes, img_channels=img_channels)  # old,
-    model = nn.Sequential(*list(model.children())[:-2])
-    return model
+def conv1x1(in_planes, out_planes, stride=1) -> nn.Conv2d:
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 
-def resnet18_feat(num_classes, img_channels, pretrained=False):
-    # 1, 1024, 1024 -> 512, 32, 32
-    # Flops: 36.463G, Params: 11.170M
-    model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes, img_channels=img_channels)
-    if pretrained:
-        model.load_state_dict(
-            torch.load("ckpt/resnet18-epoch=42-val_loss=0.54.pth"),
-            strict=True)
-    model = nn.Sequential(*list(model.children())[:-2])
-    return model
-
-
-def resnet18(num_classes, img_channels, pretrained=False):
-    # 1, 1024, 1024 -> 512, 32, 32
-    # Flops: 36.463G, Params: 11.170M
-    model = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=num_classes, img_channels=img_channels)
-    if pretrained:
-        model.load_state_dict(
-            torch.load("/home/junjieyang/PyProjs/barcode-detection/ckpt/resnet18-epoch=42-val_loss=0.54.pth"),
-            strict=True)
-    return model
-
-
-if __name__ == "__main__":
-    import torch
-    from thop import profile
-
-    img_c = 1
-    # Evaluate the model's flops
-    # net = ResNet(BasicBlock, [2, 2, 2, 2], num_classes=3, img_channels=img_c)  # resnet26
-    # net = nn.Sequential(*list(net.children())[:-2])
-
-    net = ResNet(Bottleneck, [3, 4, 6, 3], num_classes=3, img_channels=img_c)
-    # net = nn.Sequential(*list(net.children())[:-2])
-
-    input_tensor = torch.randn(1, img_c, 1024, 1024)
-    flops, params = profile(net, inputs=(input_tensor,))
-    print(f"Flops: {flops / 1e9:.3f}G, Params: {params / 1e6:.3f}M")
+def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1) -> nn.Conv2d:
+    """3x3 convolution with padding"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=dilation, groups=groups, bias=False, dilation=dilation)

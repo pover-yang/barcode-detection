@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import torch
 from torch import nn, Tensor
 
-# from torchvision.utils import _log_api_usage_once
+# from torchvision.tools import _log_api_usage_once
 
 
 class GeneralizedRCNN(nn.Module):
