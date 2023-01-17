@@ -1,7 +1,7 @@
 import json
-from shutil import copy
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
+from shutil import copy
 
 
 def statistics(dir_name):
@@ -53,13 +53,17 @@ def find_image(dir_name):
                 train_image_file = Path(str(file).replace('.json', suffix).replace(f'\\label', '\\train'))
                 test_image_file = Path(str(file).replace('.json', suffix).replace(f'\\label', '\\test'))
                 if train_image_file.exists():
-                    Path(str(file).replace(file.name, '').replace('\\label', '\\img-label')).mkdir(parents=True, exist_ok=True)
+                    Path(str(file).replace(file.name, '').replace('\\label', '\\img-label')).mkdir(parents=True,
+                                                                                                   exist_ok=True)
                     copy(file, str(file).replace(file.name, '').replace('\\label', '\\img-label'))
-                    copy(train_image_file, str(train_image_file).replace(train_image_file.name, '').replace('\\train', '\\img-label'))
+                    copy(train_image_file,
+                         str(train_image_file).replace(train_image_file.name, '').replace('\\train', '\\img-label'))
                 if test_image_file.exists():
-                    Path(str(file).replace(file.name, '').replace('\\label', '\\img-label')).mkdir(parents=True, exist_ok=True)
+                    Path(str(file).replace(file.name, '').replace('\\label', '\\img-label')).mkdir(parents=True,
+                                                                                                   exist_ok=True)
                     copy(file, str(file).replace(file.name, '').replace('\\label', '\\img-label'))
-                    copy(test_image_file, str(test_image_file).replace(test_image_file.name, '').replace('\\test', '\\img-label'))
+                    copy(test_image_file,
+                         str(test_image_file).replace(test_image_file.name, '').replace('\\test', '\\img-label'))
 
 
 def label_type_statistics(dir_name):
