@@ -55,6 +55,75 @@ def vertices_to_rrect(vertices):
     return rot_rect
 
 
+def parse_label_file(label_path):
+    """
+    Parse label
+    Args:
+        label_path: Label path
+
+    Returns:
+        labels: List of labels, shape (n, 5)
+    """
+    with open(label_path, mode='r', encoding='utf-8') as f:
+        label_obj = json.load(f)
+
+        vertices_map = defaultdict(list)
+        pids_map = defaultdict(list)
+        img_w, img_h = label_obj['imageWidth'], label_obj['imageHeight']
+        for shape in label_obj['shapes']:
+            if shape['shape_type'] != 'point' or int(shape['label']) == -1 or int(shape['label']) == 7:
+                continue
+            vertex = shape['points'][0]
+            pid = int(shape['label'])
+            group_id = shape['group_id'] if shape['group_id'] else 0
+
+            vertices_map[group_id].append(vertex)
+            pids_map[group_id].append(pid)
+
+    return vertices_map, pids_map, img_w, img_h
+
+
+def process_instances(vertices_map, pids_map, dst_format):
+    # check if the group of pids is valid, convert vertices to bbox or rrect
+    instances = []
+    for group_id, pids in pids_map.items():
+        pids.sort()
+        if tuple(pids) not in valid_pids_map.keys():
+            print(f"Filter invalid pids: {pids}")
+            continue
+        else:
+            vertices = vertices_map[group_id]
+            label = valid_pids_map[tuple(pids)]
+            # convert vertices to bbox or rrect
+            if dst_format == 'rrect':
+                rrect = vertices_to_rrect(vertices)
+                label_elements = rrect + [label]
+            elif dst_format == 'bbox':
+                bbox = vertices_to_bbox(vertices)
+                label_elements = bbox + [label]
+            else:
+                raise ValueError(f"Unsupported format: {dst_format}")
+            instances.append(label_elements)
+    return instances
+
+
+def filter_small_instances(instances, img_w, img_h, filter_threshold, dst_format):
+    filtered_instances = []
+    for instance in instances:
+        if dst_format == 'rrect':
+            instance_w, instance_h = instance[2], instance[3]
+        elif dst_format == 'bbox':
+            instance_w, instance_h = instance[2] - instance[0], instance[3] - instance[1]
+        else:
+            raise ValueError(f"Unsupported format: {dst_format}")
+        if instance_w / img_w < filter_threshold or instance_h / img_h < filter_threshold:
+            print(f"Filter small bbox: "
+                  f"box size {instance_w}x{instance_h} with image size: {img_w}x{img_h}")
+            continue
+        filtered_instances.append(instance)
+    return filtered_instances
+
+
 def convert_save(data_root, dst_format='rrect', filter_threshold=0.005):
     """
     Convert label from vertices to bbox or rrect, and save to txt file
@@ -72,57 +141,19 @@ def convert_save(data_root, dst_format='rrect', filter_threshold=0.005):
         raise ValueError(f"Unsupported format: {dst_format}")
     f = open(save_label_file, 'w')
 
-    # Find all label files
     label_paths = list(data_root.rglob(r"**/*.json"))
     for label_path in label_paths:
-        label_obj = json.load(open(label_path, mode='r', encoding='utf-8'))
         img_relative_path = label_path.with_suffix('.png').relative_to(data_root)
-
         line_parts = [str(img_relative_path)]
-        vertices_map = defaultdict(list)
-        pids_map = defaultdict(list)
-
-        # 1. parse labels
-        img_w, img_h = label_obj['imageWidth'], label_obj['imageHeight']
-        for shape in label_obj['shapes']:
-            if shape['shape_type'] != 'point' or int(shape['label']) == -1:
-                continue
-            vertex = shape['points'][0]
-            pid = int(shape['label'])
-            group_id = shape['group_id'] if shape['group_id'] else 0
-
-            vertices_map[group_id].append(vertex)
-            pids_map[group_id].append(pid)
-
-        # 2. check if the group of pids is valid, convert vertices to bbox or rrect
-        for group_id, pids in pids_map.items():
-            pids.sort()
-            if tuple(pids) not in valid_pids_map.keys():
-                print(f"Invalid pids: {pids} in {label_path}")
-            else:
-                vertices = vertices_map[group_id]
-                label = valid_pids_map[tuple(pids)]
-
-                if dst_format == 'rrect':
-                    rrect = vertices_to_rrect(vertices)
-                    label_elements = rrect + [label]
-                    instance_w, instance_h = rrect[2], rrect[3]
-                elif dst_format == 'bbox':
-                    bbox = vertices_to_bbox(vertices)
-                    label_elements = bbox + [label]
-                    instance_w, instance_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-                else:
-                    raise ValueError(f"Unsupported format: {dst_format}")
-
-                # filter out small bbox
-                if instance_w / img_w < filter_threshold or instance_h / img_h < filter_threshold:
-                    print(f"Filter bbox: "
-                          f"box size {instance_w}x{instance_h} with image size: {img_w}x{img_h} in {label_path}")
-                    continue
-                label_elements = ",".join(str(n) for n in label_elements)
-                line_parts.append(label_elements)
-
-        # 3. write to file if there is at least one valid instance
+        # 1. parse label
+        vertices_map, pids_map, img_w, img_h = parse_label_file(label_path)
+        # 2. process instances
+        instances = process_instances(vertices_map, pids_map, dst_format)
+        # 3. filter small instances
+        instances = filter_small_instances(instances, img_w, img_h, filter_threshold, dst_format)
+        # 4. write to file if there is at least one valid instance
+        for instance in instances:
+            line_parts.append(','.join([str(x) for x in instance]))
         if len(line_parts) >= 2:
             f.writelines("\t".join(line_parts) + "\n")
 

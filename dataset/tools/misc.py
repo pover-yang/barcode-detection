@@ -50,9 +50,9 @@ def draw_box_vertices(img, box_vertices, color=(0, 255, 0), thickness=2):
 
 def blend_heatmap(img, heatmap, alpha=0.5):
     heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
-    heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-    img = cv2.addWeighted(img, 1 - alpha, heatmap, alpha, 0)
-    return img
+    img = cv2.cvtColor(np.asarray(img), cv2.COLOR_GRAY2RGB)
+    blended_img = cv2.addWeighted(img, 1-alpha, heatmap, alpha, 0)
+    return blended_img
 
 
 def cal_mean_std(dir_name):
@@ -86,8 +86,8 @@ def cal_mean_std(dir_name):
 
 
 def split_train_test(label_file, train_ratio=0.8, shuffle=True):
-    train_label_file = label_file.replace('.txt', '_train.txt')
-    test_label_file = label_file.replace('.txt', '_test.txt')
+    train_label_file = label_file.replace('_all.txt', '_train.txt')
+    test_label_file = label_file.replace('_all.txt', '_test.txt')
 
     with open(label_file, 'r') as f:
         lines = f.readlines()
