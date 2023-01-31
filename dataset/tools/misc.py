@@ -49,7 +49,8 @@ def draw_box_vertices(img, box_vertices, color=(0, 255, 0), thickness=2):
 
 
 def blend_heatmap(img, heatmap, alpha=0.5):
-    heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+    # heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+    heatmap = np.uint8(heatmap * 255)
     img = cv2.cvtColor(np.asarray(img), cv2.COLOR_GRAY2RGB)
     blended_img = cv2.addWeighted(img, 1-alpha, heatmap, alpha, 0)
     return blended_img

@@ -89,9 +89,9 @@ def generate_heatmap_part(img_paths):
         instances = process_instances(vertices_map, pids_map, dst_format='rrect')
         heatmap = cal_oeg_hmap((h, w), n_classes=3, instances=instances)
 
-        # blended_img = blend_heatmap(img, heatmap)
-        # vis_path = str(img_path).replace('data', 'visualize-v2')
-        # cv2.imwrite(vis_path, blended_img)
+        blended_img = blend_heatmap(img, heatmap)
+        vis_path = str(img_path).replace('data', 'visualize-v1')
+        cv2.imwrite(vis_path, blended_img)
 
         npy_path = str(img_path).replace('data', 'heatmap-v1').replace('.png', '.npy')
         np.save(npy_path, heatmap)
@@ -143,21 +143,21 @@ def generate_files_indices(root_dir, train_ratio=0.8):
 
 def main():
     root_dir = Path(r"D:\Barcode-Detection-Data\data")
-    generate_files_indices(root_dir)
+
+    # generate_files_indices(root_dir)
 
     # heatmap_dir = Path(root_dir).parent / 'heatmap-v1'
     # heatmap_dir.mkdir(exist_ok=True)
-    # # visualize_dir = Path(root_dir).parent / 'visualize-v2'
-    # # visualize_dir.mkdir(exist_ok=True)
-    # for sub_dir in root_dir.iterdir():
-    #     sub_save_dir = heatmap_dir / sub_dir.name
-    #     sub_save_dir.mkdir(exist_ok=True)
-    #
-    #     # sub_vis_dir = visualize_dir / sub_dir.name
-    #     # sub_vis_dir.mkdir(exist_ok=True)
-    #
-    # generate_heatmap(root_dir)
+    visualize_dir = Path(root_dir).parent / 'visualize-v1'
+    visualize_dir.mkdir(exist_ok=True)
+    for sub_dir in root_dir.iterdir():
+        # sub_save_dir = heatmap_dir / sub_dir.name
+        # sub_save_dir.mkdir(exist_ok=True)
 
+        sub_vis_dir = visualize_dir / sub_dir.name
+        sub_vis_dir.mkdir(exist_ok=True)
+
+    generate_heatmap(root_dir)
 
 
 if __name__ == '__main__':
