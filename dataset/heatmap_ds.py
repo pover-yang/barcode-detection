@@ -21,7 +21,7 @@ class HeatMapDataset(Dataset):
         image = F.to_tensor(image)
 
         hmap_path = self.hmap_paths[idx]
-        hmap = torch.from_numpy(np.load(hmap_path))
+        hmap = torch.from_numpy(np.load(str(hmap_path)))
 
         return image, hmap
 
