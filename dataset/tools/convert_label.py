@@ -139,7 +139,7 @@ def convert_save(data_root, dst_format='rrect', filter_threshold=0.005):
         save_label_file = data_root.parent / 'bbox_all.txt'
     else:
         raise ValueError(f"Unsupported format: {dst_format}")
-    f = open(save_label_file, 'w')
+    f = open(save_label_file, 'w', encoding='utf-8')
 
     label_paths = list(data_root.rglob(r"**/*.json"))
     for label_path in label_paths:

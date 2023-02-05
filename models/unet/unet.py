@@ -1,8 +1,8 @@
-from unet_parts import *
+from .unet_parts import *
 
 
 class UNet(nn.Module):
-    def __init__(self, in_channels, n_classes, inc_channels=16):
+    def __init__(self, in_channels, n_classes, inc_channels=16, **kwargs):
         super(UNet, self).__init__()
         self.inc = DoubleConv(in_channels, inc_channels)
 
@@ -33,16 +33,3 @@ class UNet(nn.Module):
 
         u0 = self.outc(u1)  # 3
         return u0
-
-
-if __name__ == '__main__':
-    from thop import profile
-
-    model = UNet(1, 3)
-    in_tensor = torch.randn(1, 1, 512, 512)
-    out_tensor = model(in_tensor)
-    print('out_tensor.shape: ', out_tensor.shape)
-
-    flops, params = profile(model, inputs=(in_tensor, ))
-    print(f"Flops: {flops / 1e9:.3f}G, Params: {params / 1e6:.3f}M")
-

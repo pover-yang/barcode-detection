@@ -28,7 +28,7 @@ def cal_oeg_hmap(img_size, n_classes, instances):
     x_map, y_map = np.meshgrid(x_range, y_range)
 
     for instance in instances:
-        rot_rect = (instance[:2], instance[2:4], instance[4]) # instance = rrect + [label]
+        rot_rect = (instance[:2], instance[2:4], instance[4])  # instance = rrect + [label]
         label = int(instance[5])
 
         # 0. The minium bounding box of the rotated rectangle
@@ -89,11 +89,11 @@ def generate_heatmap_part(img_paths):
         instances = process_instances(vertices_map, pids_map, dst_format='rrect')
         heatmap = cal_oeg_hmap((h, w), n_classes=3, instances=instances)
 
-        blended_img = blend_heatmap(img, heatmap)
-        vis_path = str(img_path).replace('data', 'visualize-v1')
+        blended_img = blend_heatmap(img, heatmap, clamp_min=0.5)
+        vis_path = str(img_path).replace(r'\data', 'visualize-clamp-0.5-1.0')
         cv2.imwrite(vis_path, blended_img)
 
-        npy_path = str(img_path).replace('data', 'heatmap-v1').replace('.png', '.npy')
+        npy_path = str(img_path).replace(r'\data', 'hmap-v2').replace('.png', '.npy')
         np.save(npy_path, heatmap)
 
 
@@ -110,9 +110,6 @@ def generate_heatmap(root_dir):
     img_paths_parts = [list(i) for i in img_paths_parts]
 
     # multiprocess to generate heatmap
-    # n_core = cpu_count()
-    # with Pool(n_core) as p:
-    #     p.map(generate_heatmap_part, img_paths_parts)
     n_core = cpu_count()
     Parallel(n_jobs=n_core)\
         (delayed(generate_heatmap_part)(img_paths_part) for img_paths_part in img_paths_parts)
@@ -144,16 +141,15 @@ def generate_files_indices(root_dir, train_ratio=0.8):
 def main():
     root_dir = Path(r"D:\Barcode-Detection-Data\data")
 
-    # generate_files_indices(root_dir)
+    heatmap_dir = Path(root_dir).parent / 'hmap'
+    heatmap_dir.mkdir(exist_ok=True)
+    for sub_dir in root_dir.iterdir():
+        sub_save_dir = heatmap_dir / sub_dir.name
+        sub_save_dir.mkdir(exist_ok=True)
 
-    # heatmap_dir = Path(root_dir).parent / 'heatmap-v1'
-    # heatmap_dir.mkdir(exist_ok=True)
-    visualize_dir = Path(root_dir).parent / 'visualize-v1'
+    visualize_dir = Path(root_dir).parent / 'vis'
     visualize_dir.mkdir(exist_ok=True)
     for sub_dir in root_dir.iterdir():
-        # sub_save_dir = heatmap_dir / sub_dir.name
-        # sub_save_dir.mkdir(exist_ok=True)
-
         sub_vis_dir = visualize_dir / sub_dir.name
         sub_vis_dir.mkdir(exist_ok=True)
 

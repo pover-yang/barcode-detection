@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import tqdm
 from PIL import Image
+from pathlib import Path
+
 
 valid_pids_map = {
     (0, 0, 0, 0): 0,  # 1d
@@ -48,9 +50,14 @@ def draw_box_vertices(img, box_vertices, color=(0, 255, 0), thickness=2):
     return img
 
 
-def blend_heatmap(img, heatmap, alpha=0.5):
+def blend_heatmap(img, heatmap, alpha=0.5, clamp_min=0.0, clamp_max=1.0):
     # heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
-    heatmap = np.uint8(heatmap * 255)
+
+    if clamp_min != 0.0 or clamp_max != 1.0:
+        # heatmap = np.clip(heatmap, clamp_min, clamp_max)
+        heatmap = np.where(clamp_min < heatmap, 255, 0).astype(np.uint8)
+    else:
+        heatmap = (heatmap * 255).astype(np.uint8)
     img = cv2.cvtColor(np.asarray(img), cv2.COLOR_GRAY2RGB)
     blended_img = cv2.addWeighted(img, 1-alpha, heatmap, alpha, 0)
     return blended_img
@@ -86,11 +93,26 @@ def cal_mean_std(dir_name):
         f.writelines(f"mean: {mean}, std: {std}")
 
 
+def save_all_paths(dir_name, label_file):
+    """
+    Save all image paths and labels to a txt file
+    Args:
+        dir_name: the root dir of the dataset
+        label_file: the txt file to save
+    """
+    dir_name = Path(dir_name)
+    all_img_paths = list(dir_name.rglob(r"**/*.png"))
+    with open(label_file, 'w', encoding='utf-8') as f:
+        for img_path in all_img_paths:
+            f.write(str('/'.join(img_path.parts[-3:])) + '\n')
+    f.close()
+
+
 def split_train_test(label_file, train_ratio=0.8, shuffle=True):
     train_label_file = label_file.replace('_all.txt', '_train.txt')
     test_label_file = label_file.replace('_all.txt', '_test.txt')
 
-    with open(label_file, 'r') as f:
+    with open(label_file, 'r', encoding='utf-8') as f:
         lines = f.readlines()
 
     if shuffle:
@@ -109,5 +131,7 @@ def split_train_test(label_file, train_ratio=0.8, shuffle=True):
 
 if __name__ == '__main__':
     # cal_mean_std(r'D:\Barcode-Detection-Data\train')
-    split_train_test(r'D:\Barcode-Detection-Data\bbox_all.txt')
-    split_train_test(r'D:\Barcode-Detection-Data\rrect_all.txt')
+    # save_all_paths(r'D:\Barcode-Detection-Data\data', r'D:\Barcode-Detection-Data\hmap_all.txt')
+    # split_train_test(r'D:\Barcode-Detection-Data\hmap_all.txt')
+
+    split_train_test(r"D:\Barcode-Detection-Data\bbox\bbox_all.txt")

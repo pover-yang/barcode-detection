@@ -1,18 +1,21 @@
+import os
 import pytorch_lightning as pl
 
-from configs.centernet_cf import conf
-from dataset.centernet_ds import centernet_dataloader
+from dataset.heatmap_ds import train_val_loader
 
-from models import LitCenterNet
+from models import LitUNet
+
+if os.name == 'nt':
+    from configs.unet_cf_win import conf
+else:
+    from configs.unet_cf_linux import conf
 
 
 def main():
     # ------------------------
     # 1 INIT LIGHTNING MODEL
     # ------------------------
-    ckpt_path = '/home/junjieyang/PyProjs/barcode-detection/' \
-                'ckpt/centernet-resnet18-epoch=55-val_loss=4.38.ckpt'
-    model = LitCenterNet(conf.model).load_from_checkpoint(ckpt_path, model_conf=conf.model)
+    model = LitUNet(conf.model)
 
     # ------------------------
     # 2 INIT TRAINER
@@ -22,10 +25,8 @@ def main():
     # ------------------------
     # 3 START TRAINING
     # ------------------------
-
-    train_loader, val_loader = centernet_dataloader(conf.data)
+    train_loader, val_loader = train_val_loader(conf.data)
     trainer.fit(model, train_loader, val_loader)
-    trainer.test(model, val_loader)
 
 
 if __name__ == '__main__':
