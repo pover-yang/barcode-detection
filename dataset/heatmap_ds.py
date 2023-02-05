@@ -12,7 +12,7 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class HeatMapDataset(Dataset):
-    def __init__(self, root_dir, mode, input_size=512):
+    def __init__(self, root_dir, mode, input_size=(512, 512)):
         self.eval = (mode != 'train')
         self.img_dir = Path(root_dir) / 'data'
         self.label_dir = Path(root_dir) / 'rrect'
@@ -107,19 +107,19 @@ class HeatMapDataset(Dataset):
             image = TF.crop(image, dy, dx, crop_size[0], crop_size[1])
             hmap = TF.crop(hmap, dy, dx, crop_size[0], crop_size[1])
         # resize
-        image = TF.resize(image, [self.input_size, self.input_size])
-        hmap = TF.resize(hmap, [self.input_size, self.input_size])
+        image = TF.resize(image, [self.input_size[0], self.input_size[1]])
+        hmap = TF.resize(hmap, [self.input_size[0], self.input_size[1]])
         return image, hmap
 
     def resize_keep_aspect(self, image, hmap):
-        dst_image = torch.full((1, self.input_size, self.input_size), 0.5, dtype=torch.float32)
-        dst_hmap = torch.zeros((3, self.input_size, self.input_size), dtype=torch.float32)
+        dst_image = torch.full((1, self.input_size[0], self.input_size[1]), 0.5, dtype=torch.float32)
+        dst_hmap = torch.zeros((3, self.input_size[0], self.input_size[1]), dtype=torch.float32)
 
         img_h, img_w = image.shape[-2:]
-        scale = min(self.input_size / img_h, self.input_size / img_w)
+        scale = min(self.input_size[0] / img_h, self.input_size[1] / img_w)
         scaled_w, scaled_h = int(img_w * scale), int(img_h * scale)
-        dx = (self.input_size - scaled_w) // 2
-        dy = (self.input_size - scaled_h) // 2
+        dx = (self.input_size[1] - scaled_w) // 2
+        dy = (self.input_size[0] - scaled_h) // 2
         scaled_image = TF.resize(image, [scaled_h, scaled_w])
         scaled_hmap = TF.resize(hmap, [scaled_h, scaled_w])
 
