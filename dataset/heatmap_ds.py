@@ -192,8 +192,8 @@ class HeatMapDataset(Dataset):
 
 
 def train_val_loader(conf):
-    train_dataset = HeatMapDataset(conf.root_dir, mode='train')
-    val_dataset = HeatMapDataset(conf.root_dir, mode='test')
+    train_dataset = HeatMapDataset(conf.root_dir, mode='train', input_size=(400, 640))
+    val_dataset = HeatMapDataset(conf.root_dir, mode='test', input_size=(400, 640))
 
     train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, shuffle=True,
                               num_workers=conf.num_workers,
@@ -209,14 +209,14 @@ def train_val_loader(conf):
 
 
 def sample_loader(conf):
-    sample_dataset = HeatMapDataset(conf.root_dir, mode='sample')
+    sample_dataset = HeatMapDataset(conf.root_dir, mode='sample', input_size=(400, 640))
     sample_dataloader = DataLoader(sample_dataset, batch_size=4, shuffle=False, pin_memory=True)
     return sample_dataloader
 
 
 if __name__ == '__main__':
     import torchvision
-    dataset = HeatMapDataset(r'D:\Barcode-Detection-Data', mode='train', input_size=512)
+    dataset = HeatMapDataset(r'D:\Barcode-Detection-Data', mode='test', input_size=(400, 640))
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
     from utils.misc import blend_image_hmap_tensor
