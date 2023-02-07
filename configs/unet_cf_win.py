@@ -19,7 +19,7 @@ conf.data.root_dir = r'D:/Barcode-Detection-Data'
 # models conf
 conf.model.in_channels = 1
 conf.model.n_classes = 3
-conf.model.inc_channels = 16
+conf.model.inc_channels = 8
 conf.model.sample_loader = sample_loader(conf.data)
 
 # train conf
