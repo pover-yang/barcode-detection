@@ -76,5 +76,34 @@ def main():
     convert_image_format(Path(r"D:\original-data\merge-dir"))
 
 
+def copy_all_image():
+    import shutil
+    import random
+    import cv2
+    root_dir = r"D:\Barcode-Detection-Data\data"
+    dst_dir = r"D:\Barcode-Detection-Data\all-images"
+    sud_dirs = [sud_dir for sud_dir in Path(root_dir).glob("*/") if sud_dir.is_dir()]
+    for sud_dir in sud_dirs:
+        sub_dir_images = [img_path for img_path in sud_dir.rglob(r"**\*.png") if img_path.is_file()]
+        # 随机选取20%的图片
+        random.shuffle(sub_dir_images)
+        sub_dir_images = sub_dir_images[:int(len(sub_dir_images) * 0.2)]
+        for img_path in sub_dir_images:
+            if cv2.imread(str(img_path)) is None:
+                shutil.copy(img_path, dst_dir)
+
+
+def remove_empty_images():
+    import shutil
+    import random
+    import cv2
+    root_dir = r"D:\Barcode-Detection-Data\all-images"
+    for img_path in Path(root_dir).rglob(r"**\*.png"):
+        if cv2.imread(str(img_path)) is None:
+            img_path.unlink()
+
+
 if __name__ == "__main__":
-    main()
+    # main()
+    # copy_all_image()
+    remove_empty_images()

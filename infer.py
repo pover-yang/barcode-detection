@@ -25,7 +25,7 @@ def infer_single_image(model_path, image_path):
     image_tensor = TF.to_tensor(image_norm).unsqueeze(0)
     hmap_tensor = model(image_tensor)
     hmap_tensor = torch.sigmoid(hmap_tensor)
-    hmap_image = hmap_tensor[0].detach().numpy().transpose((1, 2, 0))
+    hmap_image = hmap_tensor[0].detach().numpy()
 
     # normalize to [0, 1]
     hmap_image = (hmap_image - hmap_image.min()) / (hmap_image.max() - hmap_image.min())
@@ -65,23 +65,26 @@ def batch_infer(model_path, data_dir):
 def blend_hmap_img(image_tensor, hmap_tensor):
     image = image_tensor[0].detach().numpy().transpose((1, 2, 0))
     image = image.repeat(3, axis=2)
-    hmap = hmap_tensor[0].detach().numpy().transpose((1, 2, 0))
+    hmap = hmap_tensor[0].detach().numpy()
     hmap = cv2.resize(hmap, (image.shape[1], image.shape[0]))
     blended_image = cv2.addWeighted(image, 0.1, hmap, 0.9, 0)
 
     return blended_image
 
 
-if __name__ == '__main__':
-    # batch_infer(
-    #     model_path=r"D:\ExpLogs\UNet\v1\checkpoints\epoch=0-step=3714.ckpt",
-    #     data_dir=r"D:\Barcode-Detection-Data"
-    # )
+def to_onnx(model_path, onnx_path):
+    model = LitUNet(conf.model).load_from_checkpoint(model_path, model_conf=conf.model)
+    model.eval()
 
-    infer_single_image(
-        model_path=r"D:\ExpLogs\UNet\v5\checkpoints\unet-epoch=049-val_loss=0.0014.ckpt",
-        # model_path=r"D:\ExpLogs\UNet\v2\checkpoints\unet-epoch=087-val_loss=0.0010.ckpt",
-        image_path=r"C:\Program Files (x86)\SMoreViScanner\capture\20230206015640270.png"
-        # image_path=r"D:\Barcode-Detection-Data\data\0070\20210823044229002.png_jpg.png"
-        # image_path=r"D:\Barcode-Detection-Data\data\0002\09-51-06_jpg.png"
-    )
+    dummy_input = torch.randn(1, 1, 400, 640)
+    torch.onnx.export(model, dummy_input, onnx_path, verbose=True, opset_version=11)
+
+
+if __name__ == '__main__':
+    to_onnx(r"C:\Users\yjunj\CProjs\hmap-generator\test\hmap-v3-e99-fp32.ckpt",
+            r"C:\Users\yjunj\CProjs\hmap-generator\test\hmap-v3-e99-fp32.onnx")
+
+    # infer_single_image(
+    #     model_path=r"D:\ExpLogs\UNet\v3\checkpoints\unet-epoch=099-val_loss=0.0010.ckpt",
+    #     image_path=r"C:\Program Files (x86)\SMoreViScanner\capture\20230221025029256.png"
+    # )

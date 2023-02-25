@@ -32,4 +32,8 @@ class UNet(nn.Module):
         u1 = self.up1(u2, d0)  # 32
 
         u0 = self.outc(u1)  # 3
-        return u0
+        out = torch.sigmoid(u0)
+
+        # nchw -> nhwc
+        out = out.permute(0, 2, 3, 1)
+        return out
