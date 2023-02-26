@@ -13,36 +13,47 @@ import matplotlib.pyplot as plt
 
 # Inference on a single image
 def infer_single_image(model_path, image_path):
+    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+
     model = LitUNet(conf.model).load_from_checkpoint(model_path, model_conf=conf.model)
     model.eval()
 
-    # imread with grayscale
+    # preprocess
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    image = cv2.resize(image, (640, 400))
-    image_norm = (image / 255.0).astype(np.float32)
-    image_norm = (image_norm - 0.4330) / 0.2349
-
-    image_tensor = TF.to_tensor(image_norm).unsqueeze(0)
-    hmap_tensor = model(image_tensor)
-    hmap_tensor = torch.sigmoid(hmap_tensor)
-    hmap_image = hmap_tensor[0].detach().numpy()
-
-    # normalize to [0, 1]
-    hmap_image = (hmap_image - hmap_image.min()) / (hmap_image.max() - hmap_image.min())
-    blended_image = blend_hmap_img(image_tensor, hmap_tensor)
-
-    # convert to heat-map
-    hmap_image = cv2.cvtColor(hmap_image, cv2.COLOR_RGB2GRAY)
-    # hmap_image = cv2.applyColorMap(np.uint8(255 * hmap_image), cv2.COLORMAP_JET)
-
-    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+    image_tensor = preprocess(image)
     ax[0].imshow(image, cmap='gray')
-    ax[0].set_title('image')
-    ax[1].imshow(hmap_image)
-    ax[1].set_title('heat-map')
-    ax[2].imshow(blended_image)
+    ax[0].set_title('input image')
+
+    # inference
+    hmap_tensor = model(image_tensor)
+
+    # postprocess
+    hmap = postprocess(hmap_tensor)
+    ax[1].imshow(hmap)
+    ax[1].set_title('heat map')
+
+    # blend
+    image = (image / 255.0).astype(np.float32)
+    image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    cv2.addWeighted(image, 0.5, hmap, 0.5, 0, hmap)
+    ax[2].imshow(hmap)
     ax[2].set_title('blended image')
     plt.show()
+
+
+def preprocess(image):
+    image = (image / 255.0).astype(np.float32)
+    image = (image - 0.4330) / 0.2349
+    image = cv2.resize(image, (640, 400))
+    image_tensor = TF.to_tensor(image).unsqueeze(0)
+    return image_tensor
+
+
+def postprocess(hmap):
+    hmap = hmap[0].detach().numpy()
+    hmap = (hmap - hmap.min()) / (hmap.max() - hmap.min())
+    hmap = cv2.resize(hmap, (1280, 800))
+    return hmap
 
 
 def batch_infer(model_path, data_dir):
@@ -56,20 +67,9 @@ def batch_infer(model_path, data_dir):
         model_out = model.forward(images)
         images = images * 0.2349 + 0.4330
         heat_map = model_out
-        blended_image = blend_hmap_img(images, heat_map)
         pass
     flops, params = profile(model, inputs=(images,))
     print(f"Flops: {flops / 1e9:.3f}G, Params: {params / 1e6:.3f}M")
-
-
-def blend_hmap_img(image_tensor, hmap_tensor):
-    image = image_tensor[0].detach().numpy().transpose((1, 2, 0))
-    image = image.repeat(3, axis=2)
-    hmap = hmap_tensor[0].detach().numpy()
-    hmap = cv2.resize(hmap, (image.shape[1], image.shape[0]))
-    blended_image = cv2.addWeighted(image, 0.1, hmap, 0.9, 0)
-
-    return blended_image
 
 
 def to_onnx(model_path, onnx_path):
@@ -81,10 +81,10 @@ def to_onnx(model_path, onnx_path):
 
 
 if __name__ == '__main__':
-    to_onnx(r"C:\Users\yjunj\CProjs\hmap-generator\test\hmap-v3-e99-fp32.ckpt",
-            r"C:\Users\yjunj\CProjs\hmap-generator\test\hmap-v3-e99-fp32.onnx")
+    to_onnx("ckpt/hmap-v3-e99-fp32.ckpt",
+            "ckpt/hmap-v3-e99-fp32.onnx")
 
     # infer_single_image(
-    #     model_path=r"D:\ExpLogs\UNet\v3\checkpoints\unet-epoch=099-val_loss=0.0010.ckpt",
-    #     image_path=r"C:\Program Files (x86)\SMoreViScanner\capture\20230221025029256.png"
+    #     model_path="ckpt/hmap-v3-e99-fp32.ckpt",
+    #     image_path="data/test1.png"
     # )
